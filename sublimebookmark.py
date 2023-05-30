@@ -1,6 +1,7 @@
 import sublime
 import sublime_plugin
 import os.path
+import json
 from pickle import dump, load, UnpicklingError, PicklingError
 from copy import deepcopy
 
@@ -65,6 +66,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
         currentDir = os.path.dirname(sublime.packages_path())
         self.SAVE_PATH = currentDir + '/sublimeBookmarks.pickle'
+        self.SAVE_PATH_JSON = currentDir + '/sublimeBookmarks.json'
         Log(currentDir)
 
         self._Load()
@@ -147,7 +149,7 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
         def createPanel():
             bookmarkPanelItems = \
-                createBookmarkPanelItems(self.window, self.displayedBookmarks)
+            	createBookmarkPanelItems(self.window, self.displayedBookmarks)
 
             # create a selection panel and launch it
             selector = OptionsSelector(self.window,
@@ -483,16 +485,23 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
 
         Log("LOADING BOOKMARKS")
         try:
-            savefile = open(self.SAVE_PATH, "rb")
+            bookmarks = []
 
-            saveVersion = load(savefile)
+            with open(self.SAVE_PATH_JSON) as f:
+                for bookmark_data in json.load(f):
+                    bookmark = Bookmark.__new__(Bookmark)
+                    bookmark.__dict__ = bookmark_data
+                    view = getBookmarkView(self.window, bookmark)
 
-            if saveVersion != VERSION:
-                raise UnpicklingError("version difference in files")
+                    if view:
+                        region = view.line(view.text_point(bookmark.lineNumber, 0))
+                        bookmark.regionA = region.a
+                        bookmark.regionB = region.b
 
-            BOOKMARKS_MODE = load(savefile)
-            UID = load(savefile)
-            BOOKMARKS = load(savefile)
+                    bookmarks.append(bookmark)
+
+            BOOKMARKS = bookmarks
+            UID = len(BOOKMARKS)
 
         except (OSError, IOError, UnpicklingError,
                 EOFError, BaseException) as e:
@@ -500,9 +509,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
             print(e)
             print("\nUNABLE TO LOAD BOOKMARKS. NUKING LOAD FILE")
             # clear the load file :]
-            open(self.SAVE_PATH, "wb").close()
+            # open(self.SAVE_PATH, "wb").close()
             # if you can't load, try and save a "default" state
-            self._Save()
+            # self._Save()
 
     def _Save(self):
         global BOOKMARKS
@@ -510,6 +519,9 @@ class SublimeBookmarkCommand(sublime_plugin.WindowCommand):
         global UID
 
         try:
+            with open(self.SAVE_PATH_JSON, 'w') as f:
+                json.dump([bookmark.__dict__ for bookmark in BOOKMARKS], f)
+
             savefile = open(self.SAVE_PATH, "wb")
 
             dump(VERSION, savefile)

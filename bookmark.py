@@ -71,11 +71,13 @@ class Bookmark:
         view.show_at_center(region)
 
         # move cursor to the middle of the bookmark's region
-        bookmarkRegionMid = 0.5 * (region.begin() + region.end())
-        moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
+        # bookmarkRegionMid = 0.5 * (region.begin() + region.end())
+        # moveRegion = sublime.Region(bookmarkRegionMid, bookmarkRegionMid)
+        moveRegion = sublime.Region(region.end(), region.end())
         view.sel().clear()
         view.sel().add(moveRegion)
 
+    def isEmpty(self,  view):
         region = self.getRegion()
 
         line = view.substr(region)
@@ -176,3 +178,4 @@ def moveBookmarkToGroup(window, bookmark, group):
 
     # move the bookmark's view to the correct group
     moveViewToGroup(window, view, group)
+
